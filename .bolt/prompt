@@ -1,0 +1,30 @@
+You are starting from the Prompify WAREHOUSE template (React 19 + Vite + TypeScript + Tailwind 4 + shadcn/ui on react-admin's ra-core, based on Marmelab's shadcn-admin-kit), connected to Prompify's database. It is a finished warehouse app: items with SKU, material ID, unit and bin location; locations (warehouse, zone, bin code); stock movements (stock in, stock out, adjustment, transfer between locations); purchase orders (mark as ordered, mark as received = stock booked in); suppliers; categories; reorder levels with low-stock flags; a dashboard (stock value, items to reorder, low-stock list, recent movements). It is about 85% of a finished app. Your job is the last 15%: adapt it to the user's warehouse. Do not rebuild or restyle it.
+
+HOW IT IS ORGANISED
+- src/App.tsx: the resources (their order = sidebar menu) and title= (app name in the sidebar).
+- src/products (items), src/locations, src/stock-movements, src/purchase-orders, src/suppliers, src/categories, src/dashboard.
+- src/providers/index.ts: loads the tables below from Prompify, saves every change back, and holds the stock rules (movement → stock, transfer → item location, PO received → stock in, low_stock flag). Add a table to TABLES when you add a resource.
+- src/i18n/en.ts: every label. src/types.ts: record types.
+- Components come from the installed package prompify-admin-kit: import from "prompify-admin-kit/admin" (List, DataTable, SimpleForm, TextInput, NumberInput, SelectInput, ReferenceInput, AutocompleteInput, ArrayInput, SimpleFormIterator, DateInput, Edit, Create, ReferenceManyField…) and "prompify-admin-kit/ui/<name>". Copy how the existing screens use them. Do not create src/components/admin or src/components/ui.
+- src/providers/demoData.ts: demo data used only outside Prompify. Leave it alone.
+
+TABLES THIS TEMPLATE USES (create them in ONE <boltAction type="data"> before the start action, in this order)
+- categories (transactional): name text NOT NULL
+- suppliers (transactional): name text NOT NULL, contact_name text, email text, phone text, address text, city text, country text, notes text
+- locations (transactional): code text NOT NULL (bin code, e.g. "A-01-03"), warehouse text NOT NULL, zone text, location_type text ("storage", "receiving", "shipping" or "quarantine"), notes text
+- products (transactional): sku text NOT NULL, material_id text, reference text NOT NULL (item name), unit text ("pcs", "box", "pallet", "kg", "g", "l", "m", "roll", "set"), category_id uuid references categories.id, location_id uuid references locations.id, supplier_id uuid references suppliers.id, cost numeric, stock integer, reorder_level integer, description text
+- purchase_orders (transactional): reference text, supplier_id uuid references suppliers.id, date timestamptz, expected_date timestamptz, status text ("draft", "ordered", "received" or "cancelled"), items jsonb, total numeric, notes text
+- stock_movements (transactional): product_id uuid references products.id, to_location_id uuid references locations.id, type text ("in", "out", "adjustment" or "transfer"), quantity integer (positive adds, negative removes, 0 for transfers), reason text, reference text, date timestamptz
+Sample rows matched to the warehouse: 3-5 categories, 2-4 suppliers, 6-12 locations, 15-25 items (some at or below reorder_level), 3-5 purchase orders, 10-15 stock movements. Leave every uuid reference null (Prompify links them). In purchase_orders.items name the item instead of using its id: [{"product": "Hex bolt M8", "quantity": 20, "unit_cost": 0.4}]; the app resolves these on first load.
+
+WHAT YOU SHOULD ADAPT
+1. title in App.tsx, <title> in index.html, labels in i18n/en.ts (e.g. "Materials" instead of "Items").
+2. Item fields the warehouse needs (barcode, batch / lot, expiry date, weight, dimensions): add the column, the field in src/types.ts, an input in products/ProductInputs.tsx and a column in products/ProductList.tsx.
+3. New record types (stock takes, customers / dispatch orders, work orders…): add a table, a folder with List / Create / Edit modelled on locations/ or suppliers/, a <Resource> in App.tsx and the table in TABLES. Stock must still change only through stock movements.
+4. Currency: screens format money as USD; change the code if needed.
+
+RULES
+- Keep the shadcn-admin-kit look and components. Do not add another UI library.
+- All data goes through the data provider; never hardcode records in screens.
+- Stock and item locations change only through stock movements; do not edit them elsewhere in code.
+- Every button must work. Do not add login or sign-up screens.
